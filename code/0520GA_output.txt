@@ -1,26 +1,27 @@
-Growth Accounting in OECD Countries: 1960 -2000 period
+
+Growth Accounting in OECD Countries 1960–2000
 =====================================================================================
        Country  Growth Rate  TFP Growth  Capital Deepening  TFP Share  Capital Share
-     Australia         1.74        1.21               0.25       0.70           0.15
-       Austria         3.08        2.27               0.31       0.74           0.10
-       Belgium         2.72        2.60               0.11       0.96           0.04
-        Canada         1.45        0.90               0.30       0.62           0.21
-       Denmark         2.31        1.75               0.29       0.76           0.13
-       Finland         3.38        2.63               0.46       0.78           0.14
+     Australia         1.47        1.21               0.25       0.83           0.17
+       Austria         2.59        2.27               0.31       0.88           0.12
+       Belgium         2.71        2.60               0.11       0.96           0.04
+        Canada         1.21        0.90               0.30       0.75           0.25
+       Denmark         2.05        1.75               0.29       0.86           0.14
+       Finland         3.09        2.63               0.46       0.85           0.15
         France         2.86        2.41               0.44       0.84           0.16
-       Germany         2.73        2.53               0.19       0.93           0.07
-        Greece         3.53        1.89               0.43       0.54           0.12
-       Iceland         2.00        1.66              -0.15       0.83          -0.08
-       Ireland         3.52        3.98              -0.19       1.13          -0.05
-         Italy         3.33        2.45               0.72       0.73           0.22
-         Japan         4.21        1.26               1.01       0.30           0.24
-   Netherlands         2.20        2.08               0.31       0.95           0.14
-   New Zealand         1.20        0.80               0.33       0.67           0.28
-        Norway         2.69        2.90               0.40       1.08           0.15
-      Portugal         3.10        1.71               0.08       0.55           0.02
-         Spain         3.50        2.39               0.20       0.68           0.06
-        Sweden         2.30        1.50               0.36       0.65           0.16
-   Switzerland         1.40        0.66               0.25       0.47           0.18
-United Kingdom         2.21        2.00              -0.07       0.91          -0.03
- United States         1.82        1.40              -0.05       0.77          -0.03
-       Average         2.60        1.95               0.27       0.75           0.11
+       Germany         2.72        2.53               0.19       0.93           0.07
+        Greece         2.33        1.89               0.43       0.81           0.19
+       Iceland         1.51        1.66              -0.15       1.10          -0.10
+       Ireland         3.78        3.98              -0.19       1.05          -0.05
+         Italy         3.17        2.45               0.72       0.77           0.23
+         Japan         2.28        1.26               1.01       0.55           0.45
+   Netherlands         2.39        2.08               0.31       0.87           0.13
+   New Zealand         1.13        0.80               0.33       0.71           0.29
+        Norway         3.30        2.90               0.40       0.88           0.12
+      Portugal         1.79        1.71               0.08       0.96           0.04
+         Spain         2.59        2.39               0.20       0.92           0.08
+        Sweden         1.87        1.50               0.36       0.81           0.19
+   Switzerland         0.91        0.66               0.25       0.73           0.27
+United Kingdom         1.93        2.00              -0.07       1.04          -0.04
+ United States         1.35        1.40              -0.05       1.04          -0.04
+       Average         2.23        1.95               0.27       0.87           0.13
