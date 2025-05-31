@@ -23,11 +23,15 @@ data = data[relevant_cols].dropna()
 # 'labsh' labor share in GDP (1-alpha)
 
 # Transform Y to y
-data['alpha'] = 1 - data['labsh'] # α (output elasticity of capital %) 
+data['alpha'] = 1 - data['labsh'] # α (output elasticity of capital %)
+print(data['alpha']) 
 data['hours'] = data['emp'] * data['avh']  # L (annual hours h)
 data['y_n'] = data['rgdpna'] / data['hours']  # y = Y/L
 data['k_n'] = data['rkna'] / data['hours'] # k = K/L
 
+# log transformation to compute growth rate 
+logyn = np.log(data['y_n']) 
+logkn = np.log(data['k_n'])
 
 data['tfp_term'] = data['rtfpna'] ** (1 / (1 - data['alpha']))  # A^(1/(1-alpha))
 data['cap_term'] = (data['rkna'] / data['rgdpna']) ** (data['alpha'] / (1 - data['alpha']))  # (K/Y)^(alpha/(1-alpha))
