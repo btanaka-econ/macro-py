@@ -16,17 +16,25 @@ data = pwt90[
 
 relevant_cols = ['countrycode', 'country', 'year', 'rgdpna', 'rkna', 'pop', 'emp', 'avh', 'labsh', 'rtfpna']
 data = data[relevant_cols].dropna()
+# 'rgdpna' real GDP, national accounts
+# 'rkna' real capital stock
+# 'emp' number of persons engaged (workers)
+# 'avh' average annual hours worked per worker
+# 'labsh' labor share in GDP (1-alpha)
 
-# Calculate additional variables
-data['alpha'] = 1 - data['labsh']
-data['y_n'] = data['rgdpna'] / data['emp']  # Y/N
-data['hours'] = data['emp'] * data['avh']  # L
+# Transform Y to y
+data['alpha'] = 1 - data['labsh'] # α (output elasticity of capital %) 
+data['hours'] = data['emp'] * data['avh']  # L (annual hours h)
+data['y_n'] = data['rgdpna'] / data['hours']  # y = Y/L
+data['k_n'] = data['rkna'] / data['hours'] # k = K/L
+
+
 data['tfp_term'] = data['rtfpna'] ** (1 / (1 - data['alpha']))  # A^(1/(1-alpha))
 data['cap_term'] = (data['rkna'] / data['rgdpna']) ** (data['alpha'] / (1 - data['alpha']))  # (K/Y)^(alpha/(1-alpha))
-data['lab_term'] = data['hours'] / data['pop']  # L/N
+data['lab_term'] = data['hours'] / data['pop']  # L/N pop or emp
 data = data.sort_values('year').groupby('countrycode').apply(lambda x: x.assign(
     alpha=1 - x['labsh'],
-    y_n_shifted=100 * x['y_n'] / x['y_n'].iloc[0],
+    y_h_shifted=100 * x['y_n'] / x['y_n'].iloc[0],
     tfp_term_shifted=100 * x['tfp_term'] / x['tfp_term'].iloc[0],
     cap_term_shifted=100 * x['cap_term'] / x['cap_term'].iloc[0],
     lab_term_shifted=100 * x['lab_term'] / x['lab_term'].iloc[0]
