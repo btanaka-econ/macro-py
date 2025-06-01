@@ -30,11 +30,21 @@ data['y_n'] = data['rgdpna'] / data['hours']  # y = Y/L
 data['k_n'] = data['rkna'] / data['hours'] # k = K/L
 
 # log transformation to compute growth rate 
-logyn = np.log(data['y_n']) 
-logkn = np.log(data['k_n'])
+data['logyn'] = np.log(data['y_n']) 
+data['logkn'] = np.log(data['k_n'])
 
-data['tfp_term'] = data['rtfpna'] ** (1 / (1 - data['alpha']))  # A^(1/(1-alpha))
-data['cap_term'] = (data['rkna'] / data['rgdpna']) ** (data['alpha'] / (1 - data['alpha']))  # (K/Y)^(alpha/(1-alpha))
+# Compute year‐to‐year (annual) growth rates by country.
+data = data.sort_values(['country', 'year'])
+
+# Use groupby + shift(1) to get the previous‐year log‐value for each country:
+data['logy_lag'] = data.groupby('country')['logyn'].shift(1)
+data['logk_lag'] = data.groupby('country')['logkn'].shift(1)
+
+data['g_y'] = data['logyn'] - data['logy_lag']
+data['g_k'] = data['logkn'] - data['logk_lag']
+
+data['tfp_gr'] = (data['g_y'] - data['alpha']*data['g_k'])*100
+data['cap_term'] = (data['rkna'] 
 data['lab_term'] = data['hours'] / data['pop']  # L/N pop or emp
 data = data.sort_values('year').groupby('countrycode').apply(lambda x: x.assign(
     alpha=1 - x['labsh'],
