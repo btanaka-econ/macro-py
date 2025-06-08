@@ -21,38 +21,38 @@ data = data[relevant_cols].dropna()
 # 'emp' number of persons engaged (workers)
 # 'avh' average annual hours worked per worker
 # 'labsh' labor share in GDP (1-alpha)
-
-# Transform Y to y
 data['alpha'] = 1 - data['labsh'] # α (output elasticity of capital %)
-print(data['alpha']) 
-data['hours'] = data['emp'] * data['avh']  # L (annual hours h)
-data['y_n'] = data['rgdpna'] / data['hours']  # y = Y/L
-data['k_n'] = data['rkna'] / data['hours'] # k = K/L
 
-# log transformation to compute growth rate 
-data['logyn'] = np.log(data['y_n']) 
-data['logkn'] = np.log(data['k_n'])
+# Transform Y & K to log_y & log_k
+data['y_pc'] = data['rgdpna'] / data['emp']
+data['k_pc'] = data['rkna'] / data['emp']
+data['ln_y'] = np.log(data['y_pc'])  # log (GDP per worker)
+data['ln_k'] = np.log(data['k_pc']) # log (Capital per worker)
 
-# Compute year‐to‐year (annual) growth rates by country.
-data = data.sort_values(['country', 'year'])
+# Calculate annual growth rates
+def annual_log_growth(group, col):
+    t0 = group.loc[group["year"] == start, col].values[0]
+    tT = group.loc[group["year"] == end,   col].values[0]
+    return 100.0 * (np.log(tT) - np.log(t0)) / (end - start)
 
-# Use groupby + shift(1) to get the previous‐year log‐value for each country:
-data['logy_lag'] = data.groupby('country')['logyn'].shift(1)
-data['logk_lag'] = data.groupby('country')['logkn'].shift(1)
+results = []
+for name, g in df.groupby("country"):
+    g_y = annual_log_growth(g, "y_pc")     # total growth (output per worker)
+    g_k = annual_log_growth(g, "k_pc")     # growth of capital per worker
 
-data['g_y'] = data['logyn'] - data['logy_lag']
-data['g_k'] = data['logkn'] - data['logk_lag']
+    # --- capital-deepening component: α * g_k
+    alpha_bar = g["labsh"].mean()          # 1 − labour share
+    cap_deepen = (1 - alpha_bar) * g_k
 
-data['tfp_gr'] = (data['g_y'] - data['alpha']*data['g_k'])*100
-data['cap_term'] = (data['rkna'] 
-data['lab_term'] = data['hours'] / data['pop']  # L/N pop or emp
+data['g_k'] = (data['ln_k']-data['ln_k'].shift(1))*100 # change in k %
 data = data.sort_values('year').groupby('countrycode').apply(lambda x: x.assign(
     alpha=1 - x['labsh'],
-    y_h_shifted=100 * x['y_n'] / x['y_n'].iloc[0],
+    y_n_shifted=100 * x['y_n'] / x['y_n'].iloc[0],
     tfp_term_shifted=100 * x['tfp_term'] / x['tfp_term'].iloc[0],
     cap_term_shifted=100 * x['cap_term'] / x['cap_term'].iloc[0],
     lab_term_shifted=100 * x['lab_term'] / x['lab_term'].iloc[0]
 )).reset_index(drop=True).dropna()
+
 
 
 def calculate_growth_rates(country_data):
