@@ -4,78 +4,83 @@ import numpy as np
 pwt90 = pd.read_stata('https://www.rug.nl/ggdc/docs/pwt90.dta')
 
 oecd_countries = [
-    'Australia','Austria', 'Belgium', 'Canada', 'Denmark', 'Finland', 'France', 'Germany', 'Greece', 'Iceland', 'Ireland', 'Italy', 'Japan', 'Netherlands', 'New Zealand', 'Norway', 'Portugal', 'Spain', 'Sweden', 'Switzerland', 'United Kingdom', 'United States',
+    'Australia','Austria','Belgium','Canada','Denmark','Finland','France',
+    'Germany','Greece','Iceland','Ireland','Italy','Japan','Netherlands',
+    'New Zealand','Norway','Portugal','Spain','Sweden','Switzerland',
+    'United Kingdom','United States',
 ]
 
-start = 1960
-end = 2000
+start = 1990
+end   = 2019
+
 data = pwt90[
     pwt90['country'].isin(oecd_countries) &
     pwt90['year'].between(start, end)
 ]
 
-relevant_cols = ['countrycode', 'country', 'year', 'rgdpna', 'rkna', 'pop', 'emp', 'avh', 'labsh', 'rtfpna']
+relevant_cols = [
+    'countrycode','country','year',
+    'rgdpna','rkna','pop','emp','avh','labsh','rtfpna'
+]
 data = data[relevant_cols].dropna()
-# 'rgdpna' real GDP, national accounts
-# 'rkna' real capital stock
-# 'emp' number of persons engaged (workers)
-# 'avh' average annual hours worked per worker
-# 'labsh' labor share in GDP (1-alpha)
 
-# Switch labor input calculation from headcount to total hours worked
+# Labor input in hours
 L = data["emp"] * data["avh"]
 
-# Transform Y & K to y & k (per-worker)
-data['y'] = data['rgdpna'] / L # output per woker
-data['k'] = data['rkna'] / L # capital per woker
-# Log transform
-data['ln_y'] = np.log(data['y'])  # log (GDP per worker)
-data['ln_k'] = np.log(data['k']) # log (Capital per worker)
+# Output & capital per hour worked
+data['y'] = data['rgdpna'] / L
+data['k'] = data['rkna']   / L
 
-# Calculate average annual growth rates
-def annual_log_growth(group, col):
-    t_start = group.loc[group['year'] == start, col].values[0]
-    t_end = group.loc[group['year'] == end,   col].values[0]
-    return 100.0 * (np.log(t_end) - np.log(t_start)) / (end - start)
+# Log levels (not strictly needed for this version, but kept for consistency)
+data['ln_y'] = np.log(data['y'])
+data['ln_k'] = np.log(data['k'])
+
+def annual_log_growth(group, col, start_year=start, end_year=end):
+    years = group['year'].values
+    # if both endpoints exist, use them; else use that country's min/max
+    if (start_year in years) and (end_year in years):
+        y0, yT = start_year, end_year
+    else:
+        y0, yT = years.min(), years.max()
+    t0 = group.loc[group['year'] == y0, col].values[0]
+    tT = group.loc[group['year'] == yT, col].values[0]
+    return 100.0 * (np.log(tT) - np.log(t0)) / (yT - y0)
 
 results = []
 for name, g in data.groupby('country'):
-    g_y = annual_log_growth(g, 'y')     # total growth (output per worker)
-    g_k = annual_log_growth(g, 'k')     # growth of capital per worker
+    g_y = annual_log_growth(g, 'y')
+    g_k = annual_log_growth(g, 'k')
 
-    # capital-deepening component: α * g_k *constant alpha=0.3
+    # fixed capital share
     alpha = 0.30
     cap_deepen = alpha * g_k
-
-    # TFP growth (compute residual)
     tfp_g = g_y - cap_deepen
-    
-    # shares of total growth
-    tfp_share  = tfp_g / g_y if g_y != 0 else np.nan # to avoid dividing by zero
-    cap_share  = cap_deepen / g_y if g_y != 0 else np.nan
 
-    results.append(
-        dict(Country=name,
-             Growth_Rate=round(g_y, 2),
-             TFP_Growth=round(tfp_g, 2),
-             Capital_Deepening=round(cap_deepen, 2),
-             TFP_Share=round(tfp_share, 2),
-             Capital_Share=round(cap_share, 2))
-    )
- 
-# Assemble the table and add average row of all countries
-table = pd.DataFrame(results).sort_values("Country").reset_index(drop=True)
+    # avoid division by zero
+    tfp_share = tfp_g / g_y if g_y != 0 else np.nan
+    cap_share = cap_deepen / g_y if g_y != 0 else np.nan
 
-avg_row = {
-    "Country": "Average",
-    "Growth_Rate":  round(table["Growth_Rate"].mean(), 2),
-    "TFP_Growth":   round(table["TFP_Growth"].mean(),  2),
-    "Capital_Deepening": round(table["Capital_Deepening"].mean(), 2),
-    "TFP_Share":    round(table["TFP_Share"].mean(),   2),
-    "Capital_Share":round(table["Capital_Share"].mean(),2),
+    results.append({
+        'Country':            name,
+        'Growth_Rate':        round(g_y, 2),
+        'TFP_Growth':         round(tfp_g, 2),
+        'Capital_Deepening':  round(cap_deepen, 2),
+        'TFP_Share':          round(tfp_share, 2),
+        'Capital_Share':      round(cap_share, 2),
+    })
+
+table = pd.DataFrame(results).sort_values('Country').reset_index(drop=True)
+
+# add OECD average
+avg = {
+    'Country':          'Average',
+    'Growth_Rate':      round(table['Growth_Rate'].mean(), 2),
+    'TFP_Growth':       round(table['TFP_Growth'].mean(), 2),
+    'Capital_Deepening':round(table['Capital_Deepening'].mean(), 2),
+    'TFP_Share':        round(table['TFP_Share'].mean(), 2),
+    'Capital_Share':    round(table['Capital_Share'].mean(), 2),
 }
-table = pd.concat([table, pd.DataFrame([avg_row])], ignore_index=True)
+table = pd.concat([table, pd.DataFrame([avg])], ignore_index=True)
 
-# print the result
 print(f"Growth Accounting in OECD Countries: {start}-{end} period")
-print(table.to_markdown(index=True)) # "pip install tabulate" if you have trouble using print()
+print(table.to_markdown(index=True))
