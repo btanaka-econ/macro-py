@@ -31,56 +31,66 @@ L = data["emp"] * data["avh"]
 data['y'] = data['rgdpna'] / L
 data['k'] = data['rkna']   / L
 
-# Log levels (not strictly needed for this version, but kept for consistency)
-data['ln_y'] = np.log(data['y'])
-data['ln_k'] = np.log(data['k'])
-
-def annual_log_growth(group, col, start_year=start, end_year=end):
+def annual_log_growth(group, col):
     years = group['year'].values
-    # if both endpoints exist, use them; else use that country's min/max
-    if (start_year in years) and (end_year in years):
-        y0, yT = start_year, end_year
+    # choose 1990–2019 if available, otherwise use actual min/max years
+    if (start in years) and (end in years):
+        y0, yT = start, end
     else:
         y0, yT = years.min(), years.max()
-    t0 = group.loc[group['year'] == y0, col].values[0]
-    tT = group.loc[group['year'] == yT, col].values[0]
-    return 100.0 * (np.log(tT) - np.log(t0)) / (yT - y0)
+    v0 = group.loc[group['year'] == y0, col].values[0]
+    vT = group.loc[group['year'] == yT, col].values[0]
+    g  = 100.0 * (np.log(vT) - np.log(v0)) / (yT - y0)
+    return g, y0, yT
 
 results = []
-for name, g in data.groupby('country'):
-    g_y = annual_log_growth(g, 'y')
-    g_k = annual_log_growth(g, 'k')
+for country, grp in data.groupby('country'):
+    # compute growth rates and actual start/end used
+    g_y, y0, yT = annual_log_growth(grp, 'y')
+    g_k, _, _   = annual_log_growth(grp, 'k')
 
-    # fixed capital share
-    alpha = 0.30
-    cap_deepen = alpha * g_k
-    tfp_g = g_y - cap_deepen
+    # compute time-varying alpha as average of endpoints
+    row0     = grp.loc[grp['year'] == y0].iloc[0]
+    rowT     = grp.loc[grp['year'] == yT].iloc[0]
+    alpha0   = 1.0 - row0['labsh']
+    alphaT   = 1.0 - rowT['labsh']
+    alpha_av = (alpha0 + alphaT) / 2.0
 
-    # avoid division by zero
+    # decompose growth
+    cap_deepen = alpha_av * g_k
+    tfp_g      = g_y - cap_deepen
+
+    # shares
     tfp_share = tfp_g / g_y if g_y != 0 else np.nan
     cap_share = cap_deepen / g_y if g_y != 0 else np.nan
 
     results.append({
-        'Country':            name,
-        'Growth_Rate':        round(g_y, 2),
-        'TFP_Growth':         round(tfp_g, 2),
-        'Capital_Deepening':  round(cap_deepen, 2),
-        'TFP_Share':          round(tfp_share, 2),
-        'Capital_Share':      round(cap_share, 2),
+        'Country':           country,
+        'Start_Year':        y0,
+        'End_Year':          yT,
+        'Growth_Rate':       round(g_y, 2),
+        'TFP_Growth':        round(tfp_g, 2),
+        'Capital_Deepening': round(cap_deepen, 2),
+        'TFP_Share':         round(tfp_share, 2),
+        'Capital_Share':     round(cap_share, 2),
     })
 
+# Build final table
 table = pd.DataFrame(results).sort_values('Country').reset_index(drop=True)
 
-# add OECD average
+# Add OECD average row
 avg = {
-    'Country':          'Average',
-    'Growth_Rate':      round(table['Growth_Rate'].mean(), 2),
-    'TFP_Growth':       round(table['TFP_Growth'].mean(), 2),
-    'Capital_Deepening':round(table['Capital_Deepening'].mean(), 2),
-    'TFP_Share':        round(table['TFP_Share'].mean(), 2),
-    'Capital_Share':    round(table['Capital_Share'].mean(), 2),
+    'Country':           'Average',
+    'Start_Year':        '',
+    'End_Year':          '',
+    'Growth_Rate':       round(table['Growth_Rate'].mean(), 2),
+    'TFP_Growth':        round(table['TFP_Growth'].mean(), 2),
+    'Capital_Deepening': round(table['Capital_Deepening'].mean(), 2),
+    'TFP_Share':         round(table['TFP_Share'].mean(), 2),
+    'Capital_Share':     round(table['Capital_Share'].mean(), 2),
 }
 table = pd.concat([table, pd.DataFrame([avg])], ignore_index=True)
 
+# Display
 print(f"Growth Accounting in OECD Countries: {start}-{end} period")
 print(table.to_markdown(index=True))
