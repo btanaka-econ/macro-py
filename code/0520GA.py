@@ -21,7 +21,6 @@ data = data[relevant_cols].dropna()
 # 'emp' number of persons engaged (workers)
 # 'avh' average annual hours worked per worker
 # 'labsh' labor share in GDP (1-alpha)
-data['alpha'] = 1 - data['labsh'] # α (output elasticity of capital %)
 
 # Transform Y & K to y & k (per-worker)
 data['y'] = data['rgdpna'] / data['emp'] # output per woker
@@ -44,6 +43,24 @@ for name, g in data.groupby('country'):
     # capital-deepening component: α * g_k
     alpha_mean = g["labsh"].mean()          # 1 − labour share
     cap_deepen = (1 - alpha_mean) * g_k
+
+    # TFP growth (compute residual)
+    tfp_g = g_y - cap_deepen
+    
+    # shares of total growth
+    tfp_share  = tfp_g / g_y if g_y != 0 else np.nan # to avoid dividing by zero
+    cap_share  = cap_deepen / g_y if g_y != 0 else np.nan
+
+    results.append(
+        dict(Country=name,
+             Growth_Rate=round(g_y, 2),
+             TFP_Growth=round(tfp_g, 2),
+             Capital_Deepening=round(cap_deepen, 2),
+             TFP_Share=round(tfp_share, 2),
+             Capital_Share=round(cap_share, 2))
+    )
+ 
+    
 
 data['g_k'] = (data['ln_k']-data['ln_k'].shift(1))*100 # change in k %
 data = data.sort_values('year').groupby('countrycode').apply(lambda x: x.assign(
