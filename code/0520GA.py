@@ -74,4 +74,5 @@ avg_row = {
 table = pd.concat([table, pd.DataFrame([avg_row])], ignore_index=True)
 
 # print the result
-print(table.to_markdown()) # "pip install tabulate" if you have trouble using print()
+print(f"Growth Accounting in OECD Countries: {start}-{end} period")
+print(table.to_markdown(index=True)) # "pip install tabulate" if you have trouble using print()
