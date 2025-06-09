@@ -44,23 +44,19 @@ def annual_log_growth(group, col):
     return g, y0, yT
 
 results = []
-for country, grp in data.groupby('country'):
-    # compute growth rates and actual start/end used
-    g_y, y0, yT = annual_log_growth(grp, 'y')
-    g_k, _, _   = annual_log_growth(grp, 'k')
+for country, g in data.groupby('country'):
+    # compute growth rates (with fallback to actual start/end)
+    g_y, y0, yT = annual_log_growth(g, 'y')
+    g_k, _, _   = annual_log_growth(g, 'k')
 
-    # compute time-varying alpha as average of endpoints
-    row0     = grp.loc[grp['year'] == y0].iloc[0]
-    rowT     = grp.loc[grp['year'] == yT].iloc[0]
-    alpha0   = 1.0 - row0['labsh']
-    alphaT   = 1.0 - rowT['labsh']
-    alpha_av = (alpha0 + alphaT) / 2.0
+    # α = 1 − labor share averaged over the whole period
+    alpha_avg = 1.0 - g['labsh'].mean()
 
     # decompose growth
-    cap_deepen = alpha_av * g_k
+    cap_deepen = alpha_avg * g_k
     tfp_g      = g_y - cap_deepen
 
-    # shares
+    # compute shares
     tfp_share = tfp_g / g_y if g_y != 0 else np.nan
     cap_share = cap_deepen / g_y if g_y != 0 else np.nan
 
