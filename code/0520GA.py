@@ -74,4 +74,4 @@ avg_row = {
 table = pd.concat([table, pd.DataFrame([avg_row])], ignore_index=True)
 
 # print the result
-print(table.to_string(index=False))
+print(table.to_markdown()) # "pip install tabulate" if you have trouble using print()
