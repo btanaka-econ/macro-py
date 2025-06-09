@@ -43,9 +43,9 @@ for name, g in data.groupby('country'):
     g_y = annual_log_growth(g, 'y')     # total growth (output per worker)
     g_k = annual_log_growth(g, 'k')     # growth of capital per worker
 
-    # capital-deepening component: α * g_k
-    alpha_mean = g["labsh"].mean()          # 1 − labour share
-    cap_deepen = (1 - alpha_mean) * g_k
+    # capital-deepening component: α * g_k *constant alpha=0.3
+    alpha = 0.30
+    cap_deepen = alpha * g_k
 
     # TFP growth (compute residual)
     tfp_g = g_y - cap_deepen
