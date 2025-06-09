@@ -23,26 +23,27 @@ data = data[relevant_cols].dropna()
 # 'labsh' labor share in GDP (1-alpha)
 data['alpha'] = 1 - data['labsh'] # α (output elasticity of capital %)
 
-# Transform Y & K to log_y & log_k
-data['y_pc'] = data['rgdpna'] / data['emp']
-data['k_pc'] = data['rkna'] / data['emp']
-data['ln_y'] = np.log(data['y_pc'])  # log (GDP per worker)
-data['ln_k'] = np.log(data['k_pc']) # log (Capital per worker)
+# Transform Y & K to y & k (per-worker)
+data['y'] = data['rgdpna'] / data['emp'] # output per woker
+data['k'] = data['rkna'] / data['emp'] # capital per woker
+# Log transform
+data['ln_y'] = np.log(data['y'])  # log (GDP per worker)
+data['ln_k'] = np.log(data['k']) # log (Capital per worker)
 
-# Calculate annual growth rates
+# Calculate average annual growth rates
 def annual_log_growth(group, col):
-    t0 = group.loc[group["year"] == start, col].values[0]
-    tT = group.loc[group["year"] == end,   col].values[0]
-    return 100.0 * (np.log(tT) - np.log(t0)) / (end - start)
+    t_start = group.loc[group['year'] == start, col].values[0]
+    t_end = group.loc[group['year'] == end,   col].values[0]
+    return 100.0 * (np.log(t_end) - np.log(t_start)) / (end - start)
 
 results = []
-for name, g in df.groupby("country"):
-    g_y = annual_log_growth(g, "y_pc")     # total growth (output per worker)
-    g_k = annual_log_growth(g, "k_pc")     # growth of capital per worker
+for name, g in data.groupby('country'):
+    g_y = annual_log_growth(g, 'y')     # total growth (output per worker)
+    g_k = annual_log_growth(g, 'k')     # growth of capital per worker
 
-    # --- capital-deepening component: α * g_k
-    alpha_bar = g["labsh"].mean()          # 1 − labour share
-    cap_deepen = (1 - alpha_bar) * g_k
+    # capital-deepening component: α * g_k
+    alpha_mean = g["labsh"].mean()          # 1 − labour share
+    cap_deepen = (1 - alpha_mean) * g_k
 
 data['g_k'] = (data['ln_k']-data['ln_k'].shift(1))*100 # change in k %
 data = data.sort_values('year').groupby('countrycode').apply(lambda x: x.assign(
