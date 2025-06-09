@@ -73,6 +73,5 @@ avg_row = {
 }
 table = pd.concat([table, pd.DataFrame([avg_row])], ignore_index=True)
 
-# print and save as excel file.
+# print the result
 print(table.to_string(index=False))
-table.to_excel("Table5_1_growth_accounting.xlsx", index=False)    
