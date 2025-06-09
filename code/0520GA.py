@@ -60,66 +60,19 @@ for name, g in data.groupby('country'):
              Capital_Share=round(cap_share, 2))
     )
  
-    
+# Assemble the table and add average row of all countries
+table = pd.DataFrame(results).sort_values("Country").reset_index(drop=True)
 
-data['g_k'] = (data['ln_k']-data['ln_k'].shift(1))*100 # change in k %
-data = data.sort_values('year').groupby('countrycode').apply(lambda x: x.assign(
-    alpha=1 - x['labsh'],
-    y_n_shifted=100 * x['y_n'] / x['y_n'].iloc[0],
-    tfp_term_shifted=100 * x['tfp_term'] / x['tfp_term'].iloc[0],
-    cap_term_shifted=100 * x['cap_term'] / x['cap_term'].iloc[0],
-    lab_term_shifted=100 * x['lab_term'] / x['lab_term'].iloc[0]
-)).reset_index(drop=True).dropna()
-
-
-
-def calculate_growth_rates(country_data):
-    
-    start_year_actual = country_data['year'].min()
-    end_year_actual = country_data['year'].max()
-
-    start_data = country_data[country_data['year'] == start_year_actual].iloc[0]
-    end_data = country_data[country_data['year'] == end_year_actual].iloc[0]
-
-    years = end_data['year'] - start_data['year']
-
-    g_y = ((end_data['y_n'] / start_data['y_n']) ** (1/years) - 1) * 100
-
-    g_k = ((end_data['cap_term'] / start_data['cap_term']) ** (1/years) - 1) * 100
-
-    g_a = ((end_data['tfp_term'] / start_data['tfp_term']) ** (1/years) - 1) * 100
-
-    alpha_avg = (start_data['alpha'] + end_data['alpha']) / 2.0
-    capital_deepening_contrib = alpha_avg * g_k
-    tfp_growth_calculated = g_a
-    
-    tfp_share = (tfp_growth_calculated / g_y)
-    cap_share = (capital_deepening_contrib / g_y)
-
-    return {
-        'Country': start_data['country'],
-        'Growth Rate': round(g_y, 2),
-        'TFP Growth': round(tfp_growth_calculated, 2),
-        'Capital Deepening': round(capital_deepening_contrib, 2),
-        'TFP Share': round(tfp_share, 2),
-        'Capital Share': round(cap_share, 2)
-    }
-
-
-results_list = data.groupby('country').apply(calculate_growth_rates).dropna().tolist()
-results_df = pd.DataFrame(results_list)
-
-avg_row_data = {
-    'Country': 'Average',
-    'Growth Rate': round(results_df['Growth Rate'].mean(), 2),
-    'TFP Growth': round(results_df['TFP Growth'].mean(), 2),
-    'Capital Deepening': round(results_df['Capital Deepening'].mean(), 2),
-    'TFP Share': round(results_df['TFP Share'].mean(), 2),
-    'Capital Share': round(results_df['Capital Share'].mean(), 2)
+avg_row = {
+    "Country": "Average",
+    "Growth_Rate":  round(table["Growth_Rate"].mean(), 2),
+    "TFP_Growth":   round(table["TFP_Growth"].mean(),  2),
+    "Capital_Deepening": round(table["Capital_Deepening"].mean(), 2),
+    "TFP_Share":    round(table["TFP_Share"].mean(),   2),
+    "Capital_Share":round(table["Capital_Share"].mean(),2),
 }
-results_df = pd.concat([results_df, pd.DataFrame([avg_row_data])], ignore_index=True)
+table = pd.concat([table, pd.DataFrame([avg_row])], ignore_index=True)
 
-print("\nGrowth Accounting in OECD Countries:", start,-  end, "period")
-print("="*85)
-print(results_df.to_string(index=False))
-
+# print and save as excel file.
+print(table.to_string(index=False))
+table.to_excel("Table5_1_growth_accounting.xlsx", index=False)    
