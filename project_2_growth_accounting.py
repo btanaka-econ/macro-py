@@ -22,9 +22,12 @@ data = data[relevant_cols].dropna()
 # 'avh' average annual hours worked per worker
 # 'labsh' labor share in GDP (1-alpha)
 
+# Switch labor input calculation from headcount to total hours worked
+L = data["emp"] * data["avh"]
+
 # Transform Y & K to y & k (per-worker)
-data['y'] = data['rgdpna'] / data['emp'] # output per woker
-data['k'] = data['rkna'] / data['emp'] # capital per woker
+data['y'] = data['rgdpna'] / L # output per woker
+data['k'] = data['rkna'] / L # capital per woker
 # Log transform
 data['ln_y'] = np.log(data['y'])  # log (GDP per worker)
 data['ln_k'] = np.log(data['k']) # log (Capital per worker)
