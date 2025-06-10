@@ -1,96 +1,109 @@
+# -----------------------------------------------------------------------------
+# Re-create Table 5.1 from Aghion & Howitt (2009)
+# -----------------------------------------------------------------------------
 import pandas as pd
-import numpy as np
+import numpy  as np
 
-# ------------------------------------------------------------
-# 1. Load Penn World Table 9.0
-# ------------------------------------------------------------
-pwt90 = pd.read_stata('https://www.rug.nl/ggdc/docs/pwt90.dta')
-
-oecd_countries = [
-    'Australia','Austria','Belgium','Canada','Denmark','Finland','France',
-    'Germany','Greece','Iceland','Ireland','Italy','Japan','Netherlands',
-    'New Zealand','Norway','Portugal','Spain','Sweden','Switzerland',
-    'United Kingdom','United States'
+# -------------------------------------------------------------------
+# 1. User-set parameters
+# -------------------------------------------------------------------
+OECD_COUNTRIES = [
+    "Australia","Austria","Belgium","Canada","Denmark","Finland","France",
+    "Germany","Greece","Iceland","Ireland","Italy","Japan","Netherlands",
+    "New Zealand","Norway","Portugal","Spain","Sweden","Switzerland",
+    "United Kingdom","United States",
 ]
+START_YEAR   = 1960
+END_YEAR     = 2000
+PWT_URL      = "https://www.rug.nl/ggdc/docs/pwt90.dta"  # Penn World Table 9.0
 
-start_year, end_year = 1960, 2000
+# -------------------------------------------------------------------
+# 2. Load the Penn World Table and keep only what we need
+# -------------------------------------------------------------------
+pwt = pd.read_stata(PWT_URL)
 
-data = (
-    pwt90.loc[
-        pwt90['country'].isin(oecd_countries)
-        & pwt90['year'].between(start_year, end_year)
-    ,
-        ['countrycode','country','year','rgdpna','rkna','pop',
-         'emp','avh','labsh','rtfpna']
+cols = ["countrycode","country","year",
+        "rgdpna",    # real GDP (output, national accounts)
+        "rkna",      # real capital stock
+        "emp",       # persons engaged (number of workers)
+        "labsh",     # labour-share of income (if you prefer a time-varying α)
+        "rtfpna"]    # TFP index (optional, see below)
+
+df = (
+    pwt.loc[
+        pwt["country"].isin(OECD_COUNTRIES)
+        & pwt["year"].between(START_YEAR, END_YEAR),
+        cols
     ]
-    .dropna()
+    .dropna(subset=["rgdpna","rkna","emp"])
 )
 
-# ------------------------------------------------------------
-# 2. Build variables for growth accounting
-# ------------------------------------------------------------
-data['alpha']    = 1 - data['labsh']                    # capital share
-data['y_n']      = data['rgdpna'] / data['emp']         # GDP per worker
-data['hours']    = data['emp'] * data['avh']            # total hours
-data['tfp_term'] = data['rtfpna']**(1/(1 - data['alpha']))
-data['cap_term'] = (data['rkna']/data['rgdpna'])**(
-                     data['alpha'] / (1 - data['alpha'])
-                   )
+# -------------------------------------------------------------------
+# 3. Construct per-worker series (output y, capital k) and log levels
+# -------------------------------------------------------------------
+df["y_pc"] = df["rgdpna"] / df["emp"]      # output per worker
+df["k_pc"] = df["rkna"]  / df["emp"]      # capital per worker
+df["ln_y"] = np.log(df["y_pc"])
+df["ln_k"] = np.log(df["k_pc"])
 
-# Sorting by time helps the .iloc[0] / .iloc[-1] calls later
-data = data.sort_values('year')
+# -------------------------------------------------------------------
+# 4. Compute average annual (compound) growth rates
+#    g = 100/(T) * (ln x_T – ln x_0)
+# -------------------------------------------------------------------
+def annual_log_growth(group, col):
+    t0 = group.loc[group["year"] == START_YEAR, col].values[0]
+    tT = group.loc[group["year"] == END_YEAR,   col].values[0]
+    return 100.0 * (np.log(tT) - np.log(t0)) / (END_YEAR - START_YEAR)
 
-# ------------------------------------------------------------
-# 3. Growth-rate calculator
-# ------------------------------------------------------------
-def calculate_growth_rates(df):
-    first, last = df.iloc[0], df.iloc[-1]
-    years       = last['year'] - first['year']
+results = []
+for name, g in df.groupby("country"):
+    G_y = annual_log_growth(g, "y_pc")     # total growth (output per worker)
+    g_k = annual_log_growth(g, "k_pc")     # growth of capital per worker
 
-    g_y = ((last['y_n']      / first['y_n'])      ** (1/years) - 1) * 100
-    g_k = ((last['cap_term'] / first['cap_term']) ** (1/years) - 1) * 100
-    g_a = ((last['tfp_term'] / first['tfp_term']) ** (1/years) - 1) * 100
+    # --- capital-deepening component: α * g_k
+    alpha_bar = g["labsh"].mean()          # 1 − labour share
+    cap_deepen = (1 - alpha_bar) * g_k
 
-    alpha_bar   = 0.5 * (first['alpha'] + last['alpha'])
-    cap_contrib = alpha_bar * g_k
-    tfp_contrib = g_a
 
-    total = cap_contrib + tfp_contrib        # = “Growth Rate” in the table
-    tfp_share = tfp_contrib / total
-    cap_share = cap_contrib / total
+    # --- TFP growth: residual OR directly from PWT's rtfpna index -----------
+    # residual method (matches the book’s description)
+    tfp_g = G_y - cap_deepen
 
-    return {
-        'Country'          : first['country'],
-        'Growth Rate'      : round(total, 2),
-        'TFP Growth'       : round(tfp_contrib, 2),
-        'Capital Deepening': round(cap_contrib, 2),
-        'TFP Share'        : round(tfp_share, 2),
-        'Capital Share'    : round(cap_share, 2)
-    }
+    # If you prefer to take TFP growth directly from the TFP index, uncomment:
+    # tfp_g = annual_log_growth(g, "rtfpna")
 
-# ------------------------------------------------------------
-# 4. Apply to every country and build the output table
-# ------------------------------------------------------------
-rows = (
-    data.groupby('country', group_keys=False)
-        .apply(calculate_growth_rates)
-        .tolist()
-)
-table51 = pd.DataFrame(rows)
+    # --- shares of total growth
+    tfp_share  = tfp_g / G_y if G_y != 0 else np.nan
+    cap_share  = cap_deepen / G_y if G_y != 0 else np.nan
 
-# Add the across-country average row
-table51.loc[len(table51)] = {
-    'Country'          : 'Average',
-    'Growth Rate'      : round(table51['Growth Rate'].mean(), 2),
-    'TFP Growth'       : round(table51['TFP Growth'].mean(), 2),
-    'Capital Deepening': round(table51['Capital Deepening'].mean(), 2),
-    'TFP Share'        : round(table51['TFP Share'].mean(), 2),
-    'Capital Share'    : round(table51['Capital Share'].mean(), 2)
+    results.append(
+        dict(Country=name,
+             Growth_Rate=round(G_y, 2),
+             TFP_Growth=round(tfp_g, 2),
+             Capital_Deepening=round(cap_deepen, 2),
+             TFP_Share=round(tfp_share, 2),
+             Capital_Share=round(cap_share, 2))
+    )
+
+# -------------------------------------------------------------------
+# 5. Assemble the table and add an OECD average row
+# -------------------------------------------------------------------
+table = pd.DataFrame(results).sort_values("Country").reset_index(drop=True)
+
+avg_row = {
+    "Country": "Average",
+    "Growth_Rate":  round(table["Growth_Rate"].mean(), 2),
+    "TFP_Growth":   round(table["TFP_Growth"].mean(),  2),
+    "Capital_Deepening": round(table["Capital_Deepening"].mean(), 2),
+    "TFP_Share":    round(table["TFP_Share"].mean(),   2),
+    "Capital_Share":round(table["Capital_Share"].mean(),2),
 }
+table = pd.concat([table, pd.DataFrame([avg_row])], ignore_index=True)
 
-# ------------------------------------------------------------
-# 5. Print in Table 5-1 style
-# ------------------------------------------------------------
-print(f"\nGrowth Accounting in OECD Countries: {start_year}–{end_year}")
-print("="*85)
-print(table51.to_string(index=False))
+# -------------------------------------------------------------------
+# 6. Display or save ----------------------------------------------------------------
+print(table.to_string(index=False))
+
+# Want an Excel copy?
+# table.to_excel("Table5_1_growth_accounting.xlsx", index=False)
+# print("Saved to Table5_1_growth_accounting.xlsx")
