@@ -14,6 +14,8 @@ country_series = {
     "Brazil":'NGDPRSAXDCBRQ',
     "Japan" :'NGDPRSAXDCJPQ',
 }
+# collect all cyclical components
+cycle_data = {country: {} for country in country_series}
 
 # for loop of each country
 for country, series_id in country_series.items():
@@ -25,7 +27,8 @@ for country, series_id in country_series.items():
 
     for lamb in lambdas:
         cycle, trend = sm.tsa.filters.hpfilter(log_gdp, lamb)
-
+        cycle_data[country][lamb] = cycle
+        
     # Plot the original time series data
         plt.figure(figsize=(10, 4))
         plt.plot(log_gdp, label="Original GDP (in log)")
@@ -37,3 +40,4 @@ for country, series_id in country_series.items():
     # Add a legend and show the plot
         plt.legend()
         plt.show()
+
