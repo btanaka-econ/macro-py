@@ -41,3 +41,19 @@ for country, series_id in country_series.items():
         plt.legend()
         plt.show()
 
+# compute standard deviations and correlations
+std_devs    = pd.DataFrame(index=country_series.keys(), columns=lambdas, dtype=float)
+correlations = pd.Series(index=lambdas, dtype=float)
+
+for lamb in lambdas:
+    # std dev of cycle for each country
+    for country in country_series:
+        std_devs.loc[country, lamb] = cycle_data[country][lamb].std()
+    # correlation between Brazil and Japan
+    correlations[lamb] = cycle_data['Brazil'][lamb].corr(cycle_data['Japan'][lamb])
+
+# display the results as a table
+stats = std_devs.copy()
+stats['Corr_with_Japan'] = correlations
+print("\nStandard deviations of cyclical component and Brazil–Japan correlations:\n")
+print(stats)
